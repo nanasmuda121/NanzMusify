@@ -22,6 +22,7 @@ import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.io.IOException
 import java.net.SocketTimeoutException
+import com.dokar.quickjs.QuickJsException
 
 class YoutubeiResolver(
     context: Context,
