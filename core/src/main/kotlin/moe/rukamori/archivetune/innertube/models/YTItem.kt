@@ -111,37 +111,37 @@ data class PlaylistItem(
 data class PodcastItem(
     val browseId: String,
     val playlistId: String?,
-    override val title: String,
+    val title: String,
     val author: Artist?,
-    override val thumbnail: String?,
-    override val thumbnailWidth: Int? = null,
-    override val thumbnailHeight: Int? = null,
-) : YTItem() {
-    override val id: String
+    val thumbnail: String?,
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
+) {
+    val id: String
         get() = browseId
-    override val explicit: Boolean
+    val explicit: Boolean
         get() = false
-    override val shareLink: String
+    val shareLink: String
         get() = playlistId?.let { "https://music.youtube.com/playlist?list=$it" } ?: "https://music.youtube.com/browse/$browseId"
 }
 
 data class EpisodeItem(
-    override val id: String,
+    val id: String,
     val browseId: String?,
-    override val title: String,
+    val title: String,
     val podcast: Artist?,
     val description: String?,
     val dateText: String?,
     val durationText: String?,
     val duration: Int?,
-    override val thumbnail: String,
+    val thumbnail: String,
     val endpoint: WatchEndpoint,
-    override val thumbnailWidth: Int? = null,
-    override val thumbnailHeight: Int? = null,
-) : YTItem() {
-    override val explicit: Boolean
+    val thumbnailWidth: Int? = null,
+    val thumbnailHeight: Int? = null,
+) {
+    val explicit: Boolean
         get() = false
-    override val shareLink: String
+    val shareLink: String
         get() = "https://music.youtube.com/watch?v=$id"
 }
 

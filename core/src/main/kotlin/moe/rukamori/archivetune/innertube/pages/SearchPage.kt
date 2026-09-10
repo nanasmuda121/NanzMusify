@@ -36,40 +36,8 @@ object SearchPage {
         val thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getBestThumbnail()
         val metadata = renderer.metadataGroups()
         return when {
-            renderer.isEpisode -> {
-                val endpoint = renderer.watchEndpoint() ?: return null
-                val itemThumbnail = thumbnail ?: return null
-                val durationText = metadata.durationText()
-                EpisodeItem(
-                    id = renderer.playlistItemData?.videoId ?: endpoint.videoId ?: return null,
-                    browseId = renderer.episodeBrowseId(),
-                    title = title,
-                    podcast = metadata.podcastArtist(),
-                    description = null,
-                    dateText = metadata.firstTextExcludingDuration(),
-                    durationText = durationText,
-                    duration = durationText?.parseTime(),
-                    thumbnail = itemThumbnail.normalizedUrl,
-                    endpoint = endpoint,
-                    thumbnailWidth = itemThumbnail.width,
-                    thumbnailHeight = itemThumbnail.height,
-                )
-            }
-
-            renderer.isPodcast -> {
-                val endpoint = renderer.navigationEndpoint?.browseEndpoint ?: return null
-                PodcastItem(
-                    browseId = endpoint.browseId,
-                    playlistId =
-                        renderer.watchEndpoint()?.playlistId
-                            ?: endpoint.browseId.removePrefix(PODCAST_SHOW_BROWSE_PREFIX).takeIf(String::isNotBlank),
-                    title = title,
-                    author = metadata.podcastArtist(),
-                    thumbnail = thumbnail?.normalizedUrl,
-                    thumbnailWidth = thumbnail?.width,
-                    thumbnailHeight = thumbnail?.height,
-                )
-            }
+            renderer.isEpisode -> null
+            renderer.isPodcast -> null
 
             renderer.isSong -> {
                 val endpoint = renderer.watchEndpoint()

@@ -2380,8 +2380,6 @@ object YouTube {
                             playlists.add(item)
                         }
 
-                        is EpisodeItem, is PodcastItem -> Unit
-
                         null -> {}
                     }
                 }
