@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NanzMusify</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Cari</string>
+    <string name="nav_library">Koleksi</string>
+    <string name="search_placeholder">Cari lagu, artis, atau album...</string>
+    <string name="quick_picks">Pilihan Cepat</string>
+    <string name="trending_now">Sedang Trending</string>
+    <string name="popular_albums">Album Populer</string>
+    <string name="featured_artists">Artis Pilihan</string>
+    <string name="up_next">Antrean Lagu (Up Next)</string>
+    <string name="lyrics">Lirik</string>
+    <string name="no_lyrics_found">Lirik tidak tersedia</string>
+    <string name="favorites">Lagu Favorit</string>
+    <string name="history">Riwayat Putar</string>
+    <string name="playlists">Daftar Putar</string>
+</resources>
