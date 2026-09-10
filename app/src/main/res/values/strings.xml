@@ -137,7 +137,15 @@
     <string name="play">Play</string>
     <string name="widget_pause">Pause</string>
     <string name="widget_previous">Previous</string>
-    <string name="widget_tap_to_open">Tap to open ArchiveTune</string>
+    <string name="widget_tap_to_open">Tap to open NanzMusify</string>
+    <string name="widget_description">Quick music playback controls and track information</string>
+    <string name="widget_album_art_description">Displays current playing album artwork</string>
+    <string name="widget_listening_insights_description">Displays your music listening insights and statistics</string>
+    <string name="widget_now_playing_card_description">Displays currently playing song details with media controls</string>
+    <string name="widget_playback_capsule_description">Compact capsule playback control widget</string>
+    <string name="widget_playback_command_description">Essential playback command controls</string>
+    <string name="widget_playback_deck_description">Playback deck with album art and extended controls</string>
+    <string name="widget_playback_spotlight_description">Spotlight widget showcasing current song and playback</string>
     <string name="widget_insights_title">Listening Insights</string>
     <string name="widget_recommendations">Recommendations</string>
     <string name="widget_listening_time_empty">No listening time yet</string>
