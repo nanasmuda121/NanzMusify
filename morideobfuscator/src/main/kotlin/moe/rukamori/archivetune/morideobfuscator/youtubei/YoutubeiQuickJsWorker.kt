@@ -11,7 +11,6 @@ import android.os.SystemClock
 import android.util.Base64
 import com.dokar.quickjs.QuickJs
 import com.dokar.quickjs.QuickJsException
-import com.dokar.quickjs.QuickJsInterruptedException
 import com.dokar.quickjs.binding.asyncFunction
 import com.dokar.quickjs.binding.function
 import com.dokar.quickjs.evaluate
@@ -94,7 +93,7 @@ internal class YoutubeiQuickJsWorker(
                 } catch (throwable: Throwable) {
                     if (
                         throwable is CancellationException ||
-                        throwable is QuickJsInterruptedException ||
+                        throwable is QuickJsException ||
                         throwable.isQuickJsOutOfMemory()
                     ) {
                         discardRuntime(runtime, throwable)
@@ -131,7 +130,7 @@ internal class YoutubeiQuickJsWorker(
         try {
             runtime.memoryLimit = JAVASCRIPT_MEMORY_LIMIT_BYTES
             runtime.maxStackSize = JAVASCRIPT_STACK_LIMIT_BYTES
-            runtime.evaluationTimeoutMillis = JAVASCRIPT_TIMEOUT_MS
+            // runtime.evaluationTimeoutMillis = JAVASCRIPT_TIMEOUT_MS
             runtime.asyncFunction<String, String>("__archiveTuneHttp") { request ->
                 httpClient.execute(request, activeRequestAuthentication)
             }

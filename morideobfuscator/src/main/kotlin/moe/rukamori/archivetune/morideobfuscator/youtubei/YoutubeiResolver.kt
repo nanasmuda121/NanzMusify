@@ -10,7 +10,6 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
-import com.dokar.quickjs.QuickJsInterruptedException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -106,7 +105,7 @@ class YoutubeiResolver(
             } catch (cancellation: CancellationException) {
                 diagnostics("Resolution cancelled elapsedMs=${SystemClock.elapsedRealtime() - startedAt}")
                 throw cancellation
-            } catch (timeout: QuickJsInterruptedException) {
+            } catch (timeout: QuickJsException) {
                 throw YoutubeiException(
                     kind = YoutubeiFailureKind.TIMEOUT,
                     message = "youtubei.js execution timed out",
