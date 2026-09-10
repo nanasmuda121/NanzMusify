@@ -21,7 +21,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.coroutines.core)
-    implementation(libs.okhttp)
-    implementation(libs.quickjs.kt)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("io.github.dokar3:quickjs-kt-android:1.0.0-alpha13")
 }
