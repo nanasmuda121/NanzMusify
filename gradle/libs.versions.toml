@@ -47,6 +47,9 @@ aboutLibraries = "15.0.3"
 
 
 [libraries]
+coroutines-core = "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
+quickjs-kt = "io.github.dokar3:quickjs-kt:0.9.0"
+
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutinesGuava" }
