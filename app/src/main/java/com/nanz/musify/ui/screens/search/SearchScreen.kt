@@ -1,9 +1,12 @@
 package com.nanz.musify.ui.screens.search
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -16,9 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nanz.musify.data.innertube.models.SongItem
+import coil.compose.AsyncImage
+import com.nanz.musify.data.innertube.models.*
 import com.nanz.musify.ui.components.SongItemRow
 import com.nanz.musify.ui.theme.*
 import com.nanz.musify.ui.viewmodels.MusicViewModel
@@ -26,12 +33,23 @@ import com.nanz.musify.ui.viewmodels.MusicViewModel
 @Composable
 fun SearchScreen(
     viewModel: MusicViewModel,
-    onSongClick: (SongItem) -> Unit
+    onSongClick: (SongItem) -> Unit,
+    onArtistClick: (ArtistItem) -> Unit,
+    onAlbumClick: (AlbumItem) -> Unit
 ) {
     val query by viewModel.searchQuery.collectAsState()
+    val currentFilter by viewModel.searchFilter.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
+
+    val filterOptions = listOf(
+        Pair("Semua", SearchFilter.ALL),
+        Pair("Lagu", SearchFilter.SONGS),
+        Pair("Artis", SearchFilter.ARTISTS),
+        Pair("Album", SearchFilter.ALBUMS),
+        Pair("Playlist", SearchFilter.PLAYLISTS)
+    )
 
     Scaffold(
         containerColor = BackgroundDark
@@ -41,13 +59,13 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Search Input Field
+            // Search Input
             TextField(
                 value = query,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
                     .clip(RoundedCornerShape(16.dp)),
                 placeholder = {
                     Text(
@@ -85,6 +103,24 @@ fun SearchScreen(
                 )
             )
 
+            // Filter Chips
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(filterOptions) { (label, filter) ->
+                    FilterChip(
+                        selected = currentFilter == filter,
+                        onClick = { viewModel.onFilterSelected(filter) },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryRed,
+                            selectedLabelColor = TextPrimary
+                        )
+                    )
+                }
+            }
+
             if (isSearching) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -97,13 +133,93 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
-                    items(searchResults!!.songs) { song ->
-                        SongItemRow(
-                            song = song,
-                            isPlaying = playbackState.currentSong?.id == song.id,
-                            onClick = { onSongClick(song) },
-                            onFavoriteClick = { viewModel.toggleFavorite(song) }
-                        )
+                    // Artists Section
+                    if (searchResults!!.artists.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Artis",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(searchResults!!.artists) { artist ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onArtistClick(artist) }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = artist.thumbnailUrl ?: "",
+                                    contentDescription = artist.name,
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(CircleShape)
+                                        .background(SurfaceVariantDark),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column {
+                                    Text(text = artist.name, style = MaterialTheme.typography.titleLarge.copy(fontSize = 15.sp))
+                                    Text(text = "Artis YouTube Music", style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted, fontSize = 12.sp))
+                                }
+                            }
+                        }
+                    }
+
+                    // Albums Section
+                    if (searchResults!!.albums.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Album & Playlist",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(searchResults!!.albums) { album ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onAlbumClick(album) }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = album.thumbnailUrl ?: "",
+                                    contentDescription = album.title,
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SurfaceVariantDark),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column {
+                                    Text(text = album.title, style = MaterialTheme.typography.titleLarge.copy(fontSize = 15.sp))
+                                    Text(text = album.artistName, style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted, fontSize = 12.sp))
+                                }
+                            }
+                        }
+                    }
+
+                    // Songs Section
+                    if (searchResults!!.songs.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Lagu",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(searchResults!!.songs) { song ->
+                            SongItemRow(
+                                song = song,
+                                isPlaying = playbackState.currentSong?.id == song.id,
+                                onClick = { onSongClick(song) },
+                                onFavoriteClick = { viewModel.toggleFavorite(song) }
+                            )
+                        }
                     }
                 }
             } else {
@@ -112,7 +228,7 @@ fun SearchScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Temukan jutaan lagu di YouTube Music",
+                        text = "Cari lagu, artis, atau album dari YouTube Music",
                         color = TextMuted,
                         style = MaterialTheme.typography.bodyLarge
                     )

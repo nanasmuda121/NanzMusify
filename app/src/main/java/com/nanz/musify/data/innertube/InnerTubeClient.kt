@@ -1,7 +1,6 @@
 package com.nanz.musify.data.innertube
 
 import com.google.gson.Gson
-import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.nanz.musify.data.innertube.models.*
@@ -13,10 +12,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
-/**
- * InnerTube YouTube Music API Client
- * Mengakses seluruh katalog musik, metadata, queue, search, dan direct streaming URL.
- */
 class InnerTubeClient(
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -32,9 +27,6 @@ class InnerTubeClient(
         private const val CLIENT_VERSION = "1.20240901.01.00"
     }
 
-    /**
-     * Membuat Context Payload default untuk InnerTube (Web Remix & Android Music)
-     */
     private fun createInnerTubeContext(clientName: String = "WEB_REMIX", clientVersion: String = CLIENT_VERSION): JsonObject {
         val client = JsonObject().apply {
             addProperty("clientName", clientName)
@@ -48,9 +40,6 @@ class InnerTubeClient(
         }
     }
 
-    /**
-     * Menjalankan POST request ke endpoint InnerTube
-     */
     private suspend fun post(endpoint: String, payload: JsonObject): JsonObject = withContext(Dispatchers.IO) {
         val url = "$BASE_URL/$endpoint?prettyPrint=false"
         val requestBody = payload.toString().toRequestBody(jsonMediaType)
@@ -74,9 +63,6 @@ class InnerTubeClient(
         }
     }
 
-    /**
-     * Mencari Lagu, Album, Artis, atau Playlist
-     */
     suspend fun search(query: String, filter: SearchFilter = SearchFilter.ALL): SearchResult = withContext(Dispatchers.IO) {
         val payload = JsonObject().apply {
             add("context", createInnerTubeContext())
@@ -95,9 +81,6 @@ class InnerTubeClient(
         }
     }
 
-    /**
-     * Mengambil Beranda YouTube Music (Explore, Charts, Moods, Quick Picks)
-     */
     suspend fun getHomeFeed(): List<HomeSection> = withContext(Dispatchers.IO) {
         val payload = JsonObject().apply {
             add("context", createInnerTubeContext())
@@ -183,9 +166,6 @@ class InnerTubeClient(
         sections
     }
 
-    /**
-     * Mendapatkan Stream URL Audio Langsung (Android Music Client Endpoint)
-     */
     suspend fun getStreamInfo(videoId: String): StreamInfo? = withContext(Dispatchers.IO) {
         val androidContext = JsonObject().apply {
             val client = JsonObject().apply {
@@ -245,9 +225,6 @@ class InnerTubeClient(
         }
     }
 
-    /**
-     * Mengambil Antrean Lagu / Up Next (Radio / Related Tracks)
-     */
     suspend fun getQueue(videoId: String, playlistId: String? = null): List<SongItem> = withContext(Dispatchers.IO) {
         val payload = JsonObject().apply {
             add("context", createInnerTubeContext())
@@ -302,9 +279,79 @@ class InnerTubeClient(
     }
 
     /**
-     * Mengambil Lirik Lagu
+     * Jelajah Halaman Artis (Top Songs, Albums, Info)
      */
-    suspend fun getLyrics(browseId: String): LyricsItem? = withContext(Dispatchers.IO) {
+    suspend fun getArtist(channelId: String): ArtistItem? = withContext(Dispatchers.IO) {
+        val payload = JsonObject().apply {
+            add("context", createInnerTubeContext())
+            addProperty("browseId", channelId)
+        }
+
+        try {
+            val json = post("browse", payload)
+            val header = json.getAsJsonObject("header")?.getAsJsonObject("musicImmersiveHeaderRenderer")
+                ?: json.getAsJsonObject("header")?.getAsJsonObject("musicVisualHeaderRenderer")
+
+            val artistName = extractText(header?.getAsJsonObject("title")) ?: "Artis"
+            val artistThumb = extractThumbnail(header?.getAsJsonObject("thumbnail"))
+            val subCount = extractText(header?.getAsJsonObject("subscriptionButton")?.getAsJsonObject("subscribeButtonRenderer")?.getAsJsonObject("subscriberCountText"))
+
+            val songs = mutableListOf<SongItem>()
+            val albums = mutableListOf<AlbumItem>()
+
+            val sections = json.getAsJsonObject("contents")
+                ?.getAsJsonObject("singleColumnBrowseResultsRenderer")
+                ?.getAsJsonArray("tabs")
+                ?.get(0)?.asJsonObject
+                ?.getAsJsonObject("tabRenderer")
+                ?.getAsJsonObject("content")
+                ?.getAsJsonObject("sectionListRenderer")
+                ?.getAsJsonArray("contents")
+
+            sections?.forEach { secElem ->
+                val shelf = secElem.asJsonObject.getAsJsonObject("musicShelfRenderer")
+                val carousel = secElem.asJsonObject.getAsJsonObject("musicCarouselShelfRenderer")
+
+                shelf?.getAsJsonArray("contents")?.forEach { itemElem ->
+                    val resp = itemElem.asJsonObject.getAsJsonObject("musicResponsiveListItemRenderer")
+                    if (resp != null) {
+                        parseResponsiveListItem(resp)?.let { songs.add(it) }
+                    }
+                }
+
+                carousel?.getAsJsonArray("contents")?.forEach { itemElem ->
+                    val twoRow = itemElem.asJsonObject.getAsJsonObject("musicTwoRowItemRenderer")
+                    if (twoRow != null) {
+                        val albumTitle = extractText(twoRow.getAsJsonObject("title")) ?: ""
+                        val browseId = twoRow.getAsJsonObject("navigationEndpoint")
+                            ?.getAsJsonObject("browseEndpoint")
+                            ?.get("browseId")?.asString ?: ""
+                        val thumb = extractThumbnail(twoRow.getAsJsonObject("thumbnailRenderer"))
+                        if (browseId.isNotEmpty()) {
+                            albums.add(AlbumItem(id = browseId, title = albumTitle, artistName = artistName, thumbnailUrl = thumb))
+                        }
+                    }
+                }
+            }
+
+            ArtistItem(
+                id = channelId,
+                name = artistName,
+                thumbnailUrl = artistThumb,
+                subscriberCount = subCount,
+                topSongs = songs,
+                topAlbums = albums
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Jelajah Album / Playlist InnerTube
+     */
+    suspend fun getAlbumOrPlaylist(browseId: String): AlbumItem? = withContext(Dispatchers.IO) {
         val payload = JsonObject().apply {
             add("context", createInnerTubeContext())
             addProperty("browseId", browseId)
@@ -312,25 +359,48 @@ class InnerTubeClient(
 
         try {
             val json = post("browse", payload)
-            val section = json.getAsJsonObject("contents")
+            val header = json.getAsJsonObject("header")?.getAsJsonObject("musicDetailHeaderRenderer")
+                ?: json.getAsJsonObject("header")?.getAsJsonObject("musicResponsiveHeaderRenderer")
+
+            val title = extractText(header?.getAsJsonObject("title")) ?: "Album"
+            val subtitle = extractText(header?.getAsJsonObject("subtitle")) ?: ""
+            val thumb = extractThumbnail(header?.getAsJsonObject("thumbnail"))
+
+            val songs = mutableListOf<SongItem>()
+            val contents = json.getAsJsonObject("contents")
+                ?.getAsJsonObject("singleColumnBrowseResultsRenderer")
+                ?.getAsJsonArray("tabs")
+                ?.get(0)?.asJsonObject
+                ?.getAsJsonObject("tabRenderer")
+                ?.getAsJsonObject("content")
                 ?.getAsJsonObject("sectionListRenderer")
                 ?.getAsJsonArray("contents")
-                ?.get(0)?.asJsonObject
-                ?.getAsJsonObject("musicDescriptionShelfRenderer")
 
-            val plainText = extractText(section?.getAsJsonObject("description"))
-            if (!plainText.isNullOrBlank()) {
-                LyricsItem(plainLyrics = plainText, isSynced = false)
-            } else {
-                null
+            contents?.forEach { sec ->
+                val shelf = sec.asJsonObject.getAsJsonObject("musicShelfRenderer")
+                    ?: sec.asJsonObject.getAsJsonObject("musicPlaylistShelfRenderer")
+
+                shelf?.getAsJsonArray("contents")?.forEach { item ->
+                    val resp = item.asJsonObject.getAsJsonObject("musicResponsiveListItemRenderer")
+                    if (resp != null) {
+                        parseResponsiveListItem(resp)?.let { songs.add(it) }
+                    }
+                }
             }
+
+            AlbumItem(
+                id = browseId,
+                title = title,
+                artistName = subtitle,
+                thumbnailUrl = thumb,
+                songCount = songs.size,
+                songs = songs
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
-
-    // --- Helper Parsers ---
 
     private fun parseSearchResults(query: String, json: JsonObject): SearchResult {
         val songs = mutableListOf<SongItem>()
@@ -352,10 +422,25 @@ class InnerTubeClient(
 
             items?.forEach { itemElem ->
                 val responsiveItem = itemElem.asJsonObject.getAsJsonObject("musicResponsiveListItemRenderer")
+                val twoRowItem = itemElem.asJsonObject.getAsJsonObject("musicTwoRowItemRenderer")
+
                 if (responsiveItem != null) {
                     val song = parseResponsiveListItem(responsiveItem)
                     if (song != null) {
                         songs.add(song)
+                    }
+                } else if (twoRowItem != null) {
+                    val title = extractText(twoRowItem.getAsJsonObject("title")) ?: ""
+                    val subtitle = extractText(twoRowItem.getAsJsonObject("subtitle")) ?: ""
+                    val thumb = extractThumbnail(twoRowItem.getAsJsonObject("thumbnailRenderer"))
+                    val browseId = twoRowItem.getAsJsonObject("navigationEndpoint")
+                        ?.getAsJsonObject("browseEndpoint")
+                        ?.get("browseId")?.asString ?: ""
+
+                    if (subtitle.contains("Artist", true) || subtitle.contains("Artis", true)) {
+                        artists.add(ArtistItem(id = browseId, name = title, thumbnailUrl = thumb))
+                    } else {
+                        albums.add(AlbumItem(id = browseId, title = title, artistName = subtitle, thumbnailUrl = thumb))
                     }
                 }
             }
@@ -390,7 +475,6 @@ class InnerTubeClient(
             ?: ""
 
         if (videoId.isEmpty()) return null
-
         val thumbnail = extractThumbnail(item.getAsJsonObject("thumbnail"))
 
         return SongItem(

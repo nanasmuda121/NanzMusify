@@ -1,9 +1,13 @@
 package com.nanz.musify.ui.screens.player
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,13 +36,40 @@ import java.util.Locale
 @Composable
 fun PlayerScreen(
     viewModel: MusicViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onArtistClick: ((String) -> Unit)? = null
 ) {
     val state by viewModel.playbackState.collectAsState()
     val lyrics by viewModel.currentLyrics.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Now Playing, 1: Up Next, 2: Lirik
+    val isLyricsLoading by viewModel.isLyricsLoading.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Now Playing, 1: Antrean, 2: Lirik
 
     val song = state.currentSong
+    val lyricsListState = rememberLazyListState()
+
+    // Auto-scroll lirik sinkron saat waktu lagu berjalan
+    val activeLyricIndex = remember(lyrics, state.currentPosition) {
+        if (lyrics != null && lyrics!!.isSynced && lyrics!!.syncedLines.isNotEmpty()) {
+            val lines = lyrics!!.syncedLines
+            var idx = 0
+            for (i in lines.indices) {
+                if (state.currentPosition >= lines[i].timeMs) {
+                    idx = i
+                } else {
+                    break
+                }
+            }
+            idx
+        } else {
+            -1
+        }
+    }
+
+    LaunchedEffect(activeLyricIndex, selectedTab) {
+        if (selectedTab == 2 && activeLyricIndex >= 0) {
+            lyricsListState.animateScrollToItem((activeLyricIndex - 2).coerceAtLeast(0))
+        }
+    }
 
     Scaffold(
         containerColor = BackgroundDark,
@@ -70,17 +101,14 @@ fun PlayerScreen(
                     FilterChip(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        label = { Text("Antrean") }
+                        label = { Text("Antrean (${state.queue.size})") }
                     )
                     FilterChip(
                         selected = selectedTab == 2,
-                        onClick = {
-                            selectedTab = 2
-                            if (song != null && lyrics == null) {
-                                viewModel.loadLyrics(song.id)
-                            }
-                        },
-                        label = { Text("Lirik") }
+                        onClick = { selectedTab = 2 },
+                        label = {
+                            Text(if (lyrics?.isSynced == true) "Lirik ⚡ Sync" else "Lirik")
+                        }
                     )
                 }
             }
@@ -106,7 +134,7 @@ fun PlayerScreen(
                             model = song?.thumbnailUrl ?: "",
                             contentDescription = song?.title,
                             modifier = Modifier
-                                .size(300.dp)
+                                .size(290.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .shadow(24.dp, RoundedCornerShape(20.dp)),
                             contentScale = ContentScale.Crop
@@ -260,7 +288,7 @@ fun PlayerScreen(
                     ) {
                         item {
                             Text(
-                                text = "Antrean Lagu Berikutnya",
+                                text = "Antrean Lagu Berikutnya (InnerTube Radio)",
                                 style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
@@ -276,31 +304,67 @@ fun PlayerScreen(
                     }
                 }
                 2 -> {
-                    // Lyrics View
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val plainLyrics = lyrics?.plainLyrics
-                        if (plainLyrics != null) {
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                item {
-                                    Text(
-                                        text = plainLyrics,
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            fontSize = 18.sp,
-                                            lineHeight = 28.sp
-                                        ),
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
+                    // Synchronized Karaoke Lyrics View (LRCLIB)
+                    if (isLyricsLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = PrimaryRed)
+                        }
+                    } else if (lyrics != null && lyrics!!.isSynced && lyrics!!.syncedLines.isNotEmpty()) {
+                        LazyColumn(
+                            state = lyricsListState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp),
+                            contentPadding = PaddingValues(vertical = 120.dp)
+                        ) {
+                            itemsIndexed(lyrics!!.syncedLines) { index, line ->
+                                val isActive = index == activeLyricIndex
+                                val textColor by animateColorAsState(
+                                    targetValue = if (isActive) PrimaryRed else TextMuted
+                                )
+
+                                Text(
+                                    text = line.text,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = if (isActive) 22.sp else 16.sp,
+                                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                        lineHeight = if (isActive) 32.sp else 26.sp,
+                                        color = textColor
+                                    ),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp)
+                                        .clickable { viewModel.seekTo(line.timeMs) }
+                                )
                             }
-                        } else {
+                        }
+                    } else if (lyrics?.plainLyrics != null) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp)
+                        ) {
+                            item {
+                                Text(
+                                    text = lyrics!!.plainLyrics!!,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 17.sp,
+                                        lineHeight = 28.sp,
+                                        color = TextPrimary
+                                    ),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = "Lirik sedang dimuat atau tidak tersedia",
+                                text = "Lirik tidak ditemukan di database LRCLIB",
                                 color = TextMuted,
                                 style = MaterialTheme.typography.bodyLarge
                             )

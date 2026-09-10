@@ -2,6 +2,7 @@ package com.nanz.musify
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
@@ -16,15 +17,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nanz.musify.ui.components.MiniPlayer
 import com.nanz.musify.ui.navigation.Screen
+import com.nanz.musify.ui.screens.album.AlbumScreen
+import com.nanz.musify.ui.screens.artist.ArtistScreen
 import com.nanz.musify.ui.screens.home.HomeScreen
 import com.nanz.musify.ui.screens.library.LibraryScreen
 import com.nanz.musify.ui.screens.player.PlayerScreen
 import com.nanz.musify.ui.screens.search.SearchScreen
-import com.nanz.musify.ui.theme.BackgroundDark
-import com.nanz.musify.ui.theme.NanzMusifyTheme
-import com.nanz.musify.ui.theme.PrimaryRed
-import com.nanz.musify.ui.theme.SurfaceDark
-import com.nanz.musify.ui.theme.TextMuted
+import com.nanz.musify.ui.theme.*
 import com.nanz.musify.ui.viewmodels.MusicViewModel
 
 class MainActivity : ComponentActivity() {
@@ -47,6 +46,8 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 val playbackState by viewModel.playbackState.collectAsState()
+                val selectedArtist by viewModel.selectedArtist.collectAsState()
+                val selectedAlbum by viewModel.selectedAlbum.collectAsState()
                 var isPlayerExpanded by remember { mutableStateOf(false) }
 
                 val bottomNavItems = listOf(
@@ -54,6 +55,17 @@ class MainActivity : ComponentActivity() {
                     Screen.Search,
                     Screen.Library
                 )
+
+                // Intercept back button for expanded views
+                BackHandler(enabled = isPlayerExpanded || selectedArtist != null || selectedAlbum != null) {
+                    if (isPlayerExpanded) {
+                        isPlayerExpanded = false
+                    } else if (selectedArtist != null) {
+                        viewModel.clearArtist()
+                    } else if (selectedAlbum != null) {
+                        viewModel.clearAlbum()
+                    }
+                }
 
                 Scaffold(
                     containerColor = BackgroundDark,
@@ -129,7 +141,9 @@ class MainActivity : ComponentActivity() {
                             composable(Screen.Search.route) {
                                 SearchScreen(
                                     viewModel = viewModel,
-                                    onSongClick = { song -> viewModel.playSong(song) }
+                                    onSongClick = { song -> viewModel.playSong(song) },
+                                    onArtistClick = { artist -> viewModel.openArtist(artist.id) },
+                                    onAlbumClick = { album -> viewModel.openAlbum(album.id) }
                                 )
                             }
                             composable(Screen.Library.route) {
@@ -138,6 +152,28 @@ class MainActivity : ComponentActivity() {
                                     onSongClick = { song -> viewModel.playSong(song) }
                                 )
                             }
+                        }
+
+                        // Artist Exploration Screen overlay
+                        if (selectedArtist != null) {
+                            ArtistScreen(
+                                artist = selectedArtist!!,
+                                onBackClick = { viewModel.clearArtist() },
+                                onSongClick = { song, queue -> viewModel.playSong(song, queue) },
+                                onAlbumClick = { album -> viewModel.openAlbum(album.id) }
+                            )
+                        }
+
+                        // Album & Playlist Screen overlay
+                        if (selectedAlbum != null) {
+                            AlbumScreen(
+                                album = selectedAlbum!!,
+                                onBackClick = { viewModel.clearAlbum() },
+                                onSongClick = { song, queue -> viewModel.playSong(song, queue) },
+                                onPlayAllClick = { songs ->
+                                    if (songs.isNotEmpty()) viewModel.playSong(songs.first(), songs)
+                                }
+                            )
                         }
 
                         // Fullscreen Player Animation

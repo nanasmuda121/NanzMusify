@@ -3,12 +3,14 @@ package com.nanz.musify.data.repository
 import com.nanz.musify.data.db.SongDao
 import com.nanz.musify.data.db.SongEntity
 import com.nanz.musify.data.innertube.InnerTubeClient
+import com.nanz.musify.data.innertube.LrclibClient
 import com.nanz.musify.data.innertube.models.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class MusicRepository(
     private val innerTubeClient: InnerTubeClient,
+    private val lrclibClient: LrclibClient,
     private val songDao: SongDao
 ) {
     suspend fun getHome(): List<HomeSection> {
@@ -27,8 +29,16 @@ class MusicRepository(
         return innerTubeClient.getQueue(videoId)
     }
 
-    suspend fun getLyrics(browseId: String): LyricsItem? {
-        return innerTubeClient.getLyrics(browseId)
+    suspend fun getArtist(channelId: String): ArtistItem? {
+        return innerTubeClient.getArtist(channelId)
+    }
+
+    suspend fun getAlbumOrPlaylist(browseId: String): AlbumItem? {
+        return innerTubeClient.getAlbumOrPlaylist(browseId)
+    }
+
+    suspend fun getLyrics(trackName: String, artistName: String, durationSeconds: Long? = null): EnhancedLyrics? {
+        return lrclibClient.getLyrics(trackName, artistName, durationSeconds)
     }
 
     fun getFavoriteSongs(): Flow<List<SongItem>> {
