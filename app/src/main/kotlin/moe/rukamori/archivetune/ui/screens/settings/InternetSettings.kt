@@ -158,7 +158,7 @@ fun InternetSettings(navController: NavController) {
     val (ipRotationEnabled, onIpRotationEnabledChange) = rememberPreference(key = IpRotationEnabledKey, defaultValue = false)
     var loadingIpRotation by remember { mutableStateOf(false) }
     var refreshingIpRotation by remember { mutableStateOf(false) }
-    val activeProxyCount by YouTube.ipRotationActiveCount.collectAsStateWithLifecycle()
+    val activeProxyCount by YouTube.ipRotationActiveCount.collectAsStateWithLifecycle(0)
 
     var testingProxy by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }

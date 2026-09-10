@@ -215,6 +215,21 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
+    private val _ipRotationActiveCount = MutableStateFlow(0)
+    val ipRotationActiveCount: StateFlow<Int> = _ipRotationActiveCount.asStateFlow()
+
+    fun enableIpRotation() {
+        _ipRotationActiveCount.value = 1
+    }
+
+    fun disableIpRotation() {
+        _ipRotationActiveCount.value = 0
+    }
+
+    suspend fun refreshIpRotation() {
+        _ipRotationActiveCount.value = 1
+    }
+
     fun currentPlaybackAuthState(): PlaybackAuthState = authState
 
     fun createDnsOverHttps(url: String): Dns {
